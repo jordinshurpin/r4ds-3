@@ -65,4 +65,11 @@ y = NULL
 ) +
 theme_minimal()
 
+```
+{r}
+dbplyr_act |>
+group_by(tier1) |>
+summarize(avg_duration = mean(tuactdur, na.rm = TRUE)) |>
+arrange(desc(avg_duration)) |>
+collect()
 
