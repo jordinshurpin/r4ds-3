@@ -1,5 +1,68 @@
 ---
-title: "Analyzing School Districts and Americans' Time Use"
-author: "Your Name"
+title: Analyzing School Districts and Americans' Time Use
+author: Jordin Shurpin
 format: html
+execute: 
+  echo: false
 ---
+
+{r}
+#| message: false
+library(tidyverse)
+library(DBI)
+library(duckdb)
+library(dbplyr)
+
+
+{r}
+con <- dbConnect(duckdb(), "data/seda_2025.duckdb")
+dbplyr_dist <- tbl(con, "district_scores")
+dbplyr_state <- tbl(con, "state_scores")
+
+
+{r}
+#| cache: true
+#| cache.extra: !expr file.mtime("data/seda_2025.duckdb")
+score_change <- dbplyr_dist |>
+filter(year %in% c(2015, 2023), !is.na(rla_score)) |>
+select(sedaid, year, rla_score) |>
+pivot_wider(names_from = year, values_from = rla_score, names_prefix = "rla_") |>
+filter(!is.na(rla_2015), !is.na(rla_2023)) |>
+mutate(score_change = rla_2023 - rla_2015) |>
+collect()
+
+state_change <- dbplyr_state |>
+filter(year %in% c(2015, 2023), !is.na(rla_score)) |>
+select(stateabb, year, rla_score) |>
+pivot_wider(names_from = year, values_from = rla_score, names_prefix = "rla_") |>
+filter(!is.na(rla_2015), !is.na(rla_2023)) |>
+mutate(score_change = rla_2023 - rla_2015) |>
+collect()
+
+```
+{r}
+state_change_plot <- state_change |>
+mutate(stateabb = reorder(stateabb, rla_2023))
+
+state_change_plot |>
+ggplot(aes(y = stateabb)) +
+geom_point(aes(x = rla_2015), color = "gray60", size = 2) +
+geom_segment(
+aes(x = rla_2015, xend = rla_2023, yend = stateabb, color = score_change > 0),
+arrow = arrow(length = unit(0.15, "cm"), type = "closed")
+) +
+scale_color_manual(
+values = c("TRUE" = "steelblue", "FALSE" = "firebrick"),
+labels = c("TRUE" = "Improved", "FALSE" = "Declined"),
+name = "Change Direction"
+) +
+labs(
+title = "State Reading Score Changes (2015 to 2023)",
+subtitle = "Gray dots mark 2015 baseline scores; arrows indicate direction and magnitude of change by 2023",
+caption = "Data source: SEDA 2025 Database",
+x = "Reading Score (RLA)",
+y = NULL
+) +
+theme_minimal()
+
+
