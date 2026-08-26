@@ -39,7 +39,50 @@ filter(!is.na(rla_2015), !is.na(rla_2023)) |>
 mutate(score_change = rla_2023 - rla_2015) |>
 collect()
 
-```
+
+{r}
+dist_2023 <- dbplyr_dist |>
+filter(year == 2023, !is.na(rla_score)) |>
+collect()
+
+n_districts <- nrow(dist_2023)
+
+dist_2023 |>
+ggplot(aes(x = rla_score)) +
+geom_histogram(binwidth = 0.2, fill = "steelblue", color = "white") +
+geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+labs(
+title = "Distribution of District Reading Scores in 2023",
+subtitle = paste0("Includes data across ", scales::comma(n_districts), " school districts"),
+caption = "Data source: SEDA 2025 Database",
+x = "RLA Score",
+y = "Count"
+) +
+theme_minimal()
+
+
+{r}
+n_districts_change <- nrow(score_change)
+
+score_change |>
+ggplot(aes(x = score_change, fill = score_change > 0)) +
+geom_histogram(binwidth = 0.1, color = "white") +
+geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+scale_fill_manual(
+values = c("TRUE" = "steelblue", "FALSE" = "firebrick"),
+labels = c("TRUE" = "Improved", "FALSE" = "Declined"),
+name = "Change Status"
+) +
+labs(
+title = "Distribution of District Reading Score Changes (2015 to 2023)",
+subtitle = paste0("Based on ", scales::comma(n_districts_change), " districts with data in both years"),
+caption = "Data source: SEDA 2025 Database",
+x = "Change in RLA Score (2023 - 2015)",
+y = "Count"
+) +
+theme_minimal()
+
+
 {r}
 state_change_plot <- state_change |>
 mutate(stateabb = reorder(stateabb, rla_2023))
@@ -64,12 +107,4 @@ x = "Reading Score (RLA)",
 y = NULL
 ) +
 theme_minimal()
-
-```
-{r}
-dbplyr_act |>
-group_by(tier1) |>
-summarize(avg_duration = mean(tuactdur, na.rm = TRUE)) |>
-arrange(desc(avg_duration)) |>
-collect()
 
